@@ -10,24 +10,21 @@ Alain Royer, 2020
 #define PIN            13           // Which pin on the ESP8266 is connected to the NeoPixels?
 #define NUMPIXELS      3            // How many NeoPixels are attached to the ESP8266?
 
-const char* ssid = "Lucioles Magiques";   
-const char* password = "Sonya";
+#define LUCIOLE_1      1
+#define LUCIOLE_2      2
+#define LUCIOLE_3      4
 
-/* Put IP Address details */
+const char* ssid = "Lucioles Magiques";   
+const char* password = "Magic";
+
+// Put IP Address details
 IPAddress local_ip(192,168,1,1);
 IPAddress gateway(192,168,1,1);
 IPAddress subnet(255,255,255,0);
-
 ESP8266WebServer server(80); // set to port 80 as server
-
-
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
 int delayval = 16; // delay for half a second
-
-// for test
-int LED = 2;
-
 
 void sentvar()
 {
@@ -45,29 +42,29 @@ void setup()
     Serial.begin(115200);
     Serial.println();
     Serial.println("Lucioles Magiques");
-    Serial.println("Initializing as server");
+    Serial.println("Initialiser serveur");
 
     WiFi.softAP(ssid, password);
     WiFi.softAPConfig(local_ip, gateway, subnet);
     delay(100);
 
     IPAddress IP = WiFi.softAPIP();
-    Serial.print("AP IP address: ");
+    Serial.print("AP Address IP: ");
     Serial.println(IP);
 
     // Print ESP8266 Local IP Address
-    Serial.println(WiFi.localIP());
+    //Serial.println(WiFi.localIP());
 
-    server.on("/",        handle_OnConnect);
-    server.on("/led1on",  handle_led1on);
-    server.on("/led1off", handle_led1off);
-    server.on("/led2on",  handle_led2on);
-    server.on("/led2off", handle_led2off);
-    server.onNotFound(handle_NotFound);
+    server.on("/",          HandleOnConnect);
+    server.on("/All",       HandleAll);
+    server.on("/luc1",      HandleLuciole_1);
+    server.on("/luc2",      HandleLuciole_2);
+    server.on("/luc3",      HandleLuciole_3);
+    server.onNotFound(HandleNotFound);
 
-    server.on("/", HTTP_GET, sentvar); // Set to the server receives a request with /data/ in the string then run the sentvar function
+    //server.on("/", HTTP_GET, sentvar); // Set to the server receives a request with /data/ in the string then run the sentvar function
     server.begin();
-    Serial.println("HTTP server started");
+    Serial.println("Serveur HTTP Prêt");
   
     pixels.begin(); // This initializes the NeoPixel library.
 }
@@ -89,53 +86,188 @@ void loop()
 }
 
 
-void handle_OnConnect()
+void HandleOnConnect()
 {
-    //LED1status = LOW;
-    //LED2status = LOW;
     Serial.println("GPIO7 Status: OFF | GPIO6 Status: OFF");
-    server.send(200, "text/html", SendHTML(false, false /*LED1status,LED2status*/)); 
+    server.send(200, "text/html", SendHTML(0)); 
 }
 
-void handle_led1on()
+void HandleAll()
 {
-    //LED1status = HIGH;
-    Serial.println("GPIO7 Status: ON");
-    server.send(200, "text/html", SendHTML(true, true/*LED2status*/)); 
+    Serial.println("Toutes les Lucioles sweep");
+    server.send(200, "text/html", SendHTML(LUCIOLE_1 | LUCIOLE_2 | LUCIOLE_3)); 
 }
 
-void handle_led1off()
+void HandleLuciole_1()
 {
-    //LED1status = LOW;
-    Serial.println("GPIO7 Status: OFF");
-    server.send(200, "text/html", SendHTML(false, true /*LED2status*/)); 
+    Serial.println("Luciole 1 sweep");
+    server.send(200, "text/html", SendHTML(LUCIOLE_1)); 
 }
 
-void handle_led2on()
+void HandleLuciole_2()
 {
-    //LED2status = HIGH;
-    Serial.println("GPIO6 Status: ON");
-    server.send(200, "text/html", SendHTML(false/*LED1status*/, true)); 
+    Serial.println("Luciole 2 sweep");
+    server.send(200, "text/html", SendHTML(LUCIOLE_2)); 
 }
 
-void handle_led2off()
+void HandleLuciole_3()
 {
-    //LED2status = LOW;
-    Serial.println("GPIO6 Status: OFF");
-    server.send(200, "text/html", SendHTML(true/*LED1status*/, false)); 
+    Serial.println("Luciole 3 sweep");
+    server.send(200, "text/html", SendHTML(LUCIOLE_3)); 
 }
 
-void handle_NotFound()
+void HandleNotFound()
 {
-    server.send(404, "text/plain", "Not found");
+    server.send(404, "text/plain", "404, Non Trouvé");
 }
 
-String SendHTML(uint8_t led1stat,uint8_t led2stat)
+String SendHTML(uint8_t Lucioles)
 {
     String ptr = "<!DOCTYPE html> <html>\n";
     ptr +="<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n";
-    ptr +="<title>LED Control</title>\n";
+    ptr +="<title>Contrôle des lucioles</title>\n";
     ptr +="<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}\n";
+    
+    
+    ptr +="<div class=\"container\">";
+    ptr +="<div class=\"led-box\"><div class=\"led-green\"></div><p>Green LED</p></div>";
+    ptr +="<div class=\"led-box\"><div class=\"led-yellow\"></div><p>Yellow LED</p></div>";
+    ptr +="<div class=\"led-box\"><div class=\"led-red\"></div><p>Red LED</p></div>";
+    ptr +="<div class=\"led-box\"><div class=\"led-blue\"></div><p>Blue LED</p></div>";
+    ptr +="</div>";    
+    
+    // CSS
+    ptr +=".container {";
+    ptr +="background-size: cover;";
+    ptr +="background: rgb(226,226,226);"; /* Old browsers */
+    ptr +="background: -moz-linear-gradient(top,  rgba(226,226,226,1) 0%, rgba(219,219,219,1) 50%, rgba(209,209,209,1) 51%, rgba(254,254,254,1) 100%);"; /* FF3.6+ */
+    ptr +="       background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,rgba(226,226,226,1)), color-stop(50%,rgba(219,219,219,1)), color-stop(51%,rgba(209,209,209,1)), color-stop(100%,rgba(254,254,254,1)));"; /* Chrome,Safari4+ */
+    ptr +="       background: -webkit-linear-gradient(top,  rgba(226,226,226,1) 0%,rgba(219,219,219,1) 50%,rgba(209,209,209,1) 51%,rgba(254,254,254,1) 100%);"; /* Chrome10+,Safari5.1+ */
+    ptr +="       background: -o-linear-gradient(top,  rgba(226,226,226,1) 0%,rgba(219,219,219,1) 50%,rgba(209,209,209,1) 51%,rgba(254,254,254,1) 100%);"; /* Opera 11.10+ */
+    ptr +="       background: -ms-linear-gradient(top,  rgba(226,226,226,1) 0%,rgba(219,219,219,1) 50%,rgba(209,209,209,1) 51%,rgba(254,254,254,1) 100%);"; /* IE10+ */
+    ptr +="       background: linear-gradient(to bottom,  rgba(226,226,226,1) 0%,rgba(219,219,219,1) 50%,rgba(209,209,209,1) 51%,rgba(254,254,254,1) 100%);"; /* W3C */
+    ptr +="filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#e2e2e2', endColorstr='#fefefe',GradientType=0 );"; /* IE6-9 */
+    ptr +="padding: 20px;";
+    ptr +="}";
+
+    ptr +=".led-box {";
+    ptr +="height: 30px;";
+    ptr +="width: 25%;";
+    ptr +="margin: 10px 0;";
+    ptr +="float: left;";
+    ptr +="}";
+
+    ptr +=".led-box p {";
+    ptr +="font-size: 12px;";
+    ptr +="text-align: center;";
+    ptr +="margin: 1em;";
+    ptr +="}";
+
+    ptr +=".led-red {";
+    ptr +="margin: 0 auto;";
+    ptr +="width: 24px;";
+    ptr +="height: 24px;";
+    ptr +="background-color: #F00;";
+    ptr +="border-radius: 50%;";
+    ptr +="box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #441313 0 -1px 9px, rgba(255, 0, 0, 0.5) 0 2px 12px;";
+    ptr +="-webkit-animation: blinkRed 0.5s infinite;";
+    ptr +="-moz-animation: blinkRed 0.5s infinite;";
+    ptr +="-ms-animation: blinkRed 0.5s infinite;";
+    ptr +="-o-animation: blinkRed 0.5s infinite;";
+    ptr +="animation: blinkRed 0.5s infinite;";
+    ptr +="}";
+
+    ptr +="@-webkit-keyframes blinkRed {";
+    ptr +="from { background-color: #F00; }";
+    ptr +="50% { background-color: #A00; box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #441313 0 -1px 9px, rgba(255, 0, 0, 0.5) 0 2px 0;}";
+    ptr +="to { background-color: #F00; }";
+    ptr +="}";
+    ptr +="@-moz-keyframes blinkRed {";
+    ptr +="from { background-color: #F00; }";
+    ptr +="50% { background-color: #A00; box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #441313 0 -1px 9px, rgba(255, 0, 0, 0.5) 0 2px 0;}";
+    ptr +="to { background-color: #F00; }";
+    ptr +="}";
+    ptr +="@-ms-keyframes blinkRed {";
+    ptr +="from { background-color: #F00; }";
+    ptr +="50% { background-color: #A00; box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #441313 0 -1px 9px, rgba(255, 0, 0, 0.5) 0 2px 0;}";
+    ptr +="to { background-color: #F00; }";
+    ptr +="}";
+    ptr +="@-o-keyframes blinkRed {";
+    ptr +="from { background-color: #F00; }";
+    ptr +="50% { background-color: #A00; box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #441313 0 -1px 9px, rgba(255, 0, 0, 0.5) 0 2px 0;}";
+    ptr +="to { background-color: #F00; }";
+    ptr +="}";
+    ptr +="@keyframes blinkRed {";
+    ptr +="from { background-color: #F00; }";
+    ptr +="50% { background-color: #A00; box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #441313 0 -1px 9px, rgba(255, 0, 0, 0.5) 0 2px 0;}";
+    ptr +="to { background-color: #F00; }";
+    ptr +="}";
+
+    ptr +=".led-yellow {";
+    ptr +="margin: 0 auto;";
+    ptr +="width: 24px;";
+    ptr +="height: 24px;";
+    ptr +="background-color: #FF0;";
+    ptr +="border-radius: 50%;";
+    ptr +="box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #808002 0 -1px 9px, #FF0 0 2px 12px;";
+    ptr +="-webkit-animation: blinkYellow 1s infinite;";
+    ptr +="-moz-animation: blinkYellow 1s infinite;";
+    ptr +="-ms-animation: blinkYellow 1s infinite;";
+    ptr +="-o-animation: blinkYellow 1s infinite;";
+    ptr +="animation: blinkYellow 1s infinite;";
+    ptr +="}";
+
+    ptr +="@-webkit-keyframes blinkYellow {";
+    ptr +="from { background-color: #FF0; }";
+    ptr +="50% { background-color: #AA0; box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #808002 0 -1px 9px, #FF0 0 2px 0; }";
+    ptr +="to { background-color: #FF0; }";
+    ptr +="}";
+    ptr +="@-moz-keyframes blinkYellow {";
+    ptr +="from { background-color: #FF0; }";
+    ptr +="50% { background-color: #AA0; box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #808002 0 -1px 9px, #FF0 0 2px 0; }";
+    ptr +="to { background-color: #FF0; }";
+    ptr +="}";
+    ptr +="@-ms-keyframes blinkYellow {";
+    ptr +="from { background-color: #FF0; }";
+    ptr +="50% { background-color: #AA0; box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #808002 0 -1px 9px, #FF0 0 2px 0; }";
+    ptr +="to { background-color: #FF0; }";
+    ptr +="}";
+    ptr +="@-o-keyframes blinkYellow {";
+    ptr +="from { background-color: #FF0; }";
+    ptr +="50% { background-color: #AA0; box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #808002 0 -1px 9px, #FF0 0 2px 0; }";
+    ptr +="to { background-color: #FF0; }";
+    ptr +="}";
+    ptr +="@keyframes blinkYellow {";
+    ptr +="from { background-color: #FF0; }";
+    ptr +="50% { background-color: #AA0; box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #808002 0 -1px 9px, #FF0 0 2px 0; }";
+    ptr +="to { background-color: #FF0; }";
+    ptr +="}";
+
+    ptr +=".led-green {";
+    ptr +="margin: 0 auto;";
+    ptr +="width: 24px;";
+    ptr +="height: 24px;";
+    ptr +="background-color: #ABFF00;";
+    ptr +="border-radius: 50%;";
+    ptr +="box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #304701 0 -1px 9px, #89FF00 0 2px 12px;";
+    ptr +="}";
+
+    ptr +=".led-blue {";
+    ptr +="margin: 0 auto;";
+    ptr +="width: 24px;";
+    ptr +="height: 24px;";
+    ptr +="background-color: #24E0FF;";
+    ptr +="border-radius: 50%;";
+    ptr +="box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #006 0 -1px 9px, #3F8CFF 0 2px 14px;";
+    ptr +="}";
+    
+    // JS
+    ptr +="$( function() {";
+    ptr +="var $winHeight = $( window ).height()";
+    ptr +="$( '.container' ).height( $winHeight );";
+    ptr +="});";
+
+    // Button
     ptr +="body{margin-top: 50px;} h1 {color: #444444;margin: 50px auto 30px;} h3 {color: #444444;margin-bottom: 50px;}\n";
     ptr +=".button {display: block;width: 80px;background-color: #1abc9c;border: none;color: white;padding: 13px 30px;text-decoration: none;font-size: 25px;margin: 0px auto 35px;cursor: pointer;border-radius: 4px;}\n";
     ptr +=".button-on {background-color: #1abc9c;}\n";
@@ -147,17 +279,14 @@ String SendHTML(uint8_t led1stat,uint8_t led2stat)
     ptr +="</head>\n";
     ptr +="<body>\n";
     ptr +="<h1>Lucioles Magiques</h1>\n";
-    ptr +="<h3>Professeure Sylvain</h3>\n";
+    ptr +="<h3>Copyright (c) Alain Royer 2020</h3>\n";
   
-    if(led1stat)
-        {ptr +="<p>Lucioles 1-2-3: ON</p><a class=\"button button-off\" href=\"/led1off\">OFF</a>\n";}
-    else
-        {ptr +="<p>LED1 Status: OFF</p><a class=\"button button-on\" href=\"/led1on\">ON</a>\n";}
-
-    if(led2stat)
-        {ptr +="<p>LED2 Status: ON</p><a class=\"button button-off\" href=\"/led2off\">OFF</a>\n";}
-    else
-        {ptr +="<p>LED2 Status: OFF</p><a class=\"button button-on\" href=\"/led2on\">ON</a>\n";}
+    if(Lucioles & LUCIOLE_1) { ptr +="<p>Lucioles 1: ON  </p><a class=\"button button-off\" href=\"/led1off\">OFF</a>\n"; }
+    else                     { ptr +="<p>Lucioles 1: OFF </p><a class=\"button button-on\" href=\"/led1on\">ON</a>\n";    }
+    if(Lucioles & LUCIOLE_2) { ptr +="<p>Lucioles 2: ON</p><a class=\"button button-off\" href=\"/led2off\">OFF</a>\n";   }
+    else                     { ptr +="<p>Lucioles 2: OFF</p><a class=\"button button-on\" href=\"/led2on\">ON</a>\n";     }
+    if(Lucioles & LUCIOLE_3) { ptr +="<p>Lucioles 3: ON</p><a class=\"button button-off\" href=\"/led2off\">OFF</a>\n";   }
+    else                     { ptr +="<p>Lucioles 3: OFF</p><a class=\"button button-on\" href=\"/led2on\">ON</a>\n";     }
 
     ptr +="</body>\n";
     ptr +="</html>\n";
