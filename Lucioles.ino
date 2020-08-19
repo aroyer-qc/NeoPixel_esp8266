@@ -2,9 +2,16 @@
 Lucioles effect for trap in bottles (Harry Potters theme)
 Alain Royer, 2020
 */
+#define USE_ESP32
 
+#ifdef USE_ESP32
+#include <WiFi.h>
+#include "ESPAsyncWebServer.h"
+#else
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
+#endif
+
 #include <Adafruit_NeoPixel.h>
 
 #define PIN            13           // Which pin on the ESP8266 is connected to the NeoPixels?
@@ -21,21 +28,16 @@ const char* password = "Magic";
 IPAddress local_ip(192,168,1,1);
 IPAddress gateway(192,168,1,1);
 IPAddress subnet(255,255,255,0);
-ESP8266WebServer server(80); // set to port 80 as server
+
+#ifdef USE_ESP32
+AsyncWebServer server(80);          // Set to port 80 as server
+#else
+ESP8266WebServer server(80);        // Set to port 80 as server
+#endif
+
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
 int delayval = 16; // delay for half a second
-
-void sentvar()
-{
-    if (server.hasArg("sensor_reading")) // Value that sent from the client
-    {
-        int readingInt = server.arg("sensor_reading").toInt();
-        char readingToPrint[5];
-        itoa(readingInt, readingToPrint, 10); //set the value to string conversion 
-        server.send(200, "text/html", "Value Received");
-    }
-}
 
 void setup()
 {
@@ -44,25 +46,59 @@ void setup()
     Serial.println("Lucioles Magiques");
     Serial.println("Initialiser serveur");
 
+    #ifdef USE_ESP32
+    WiFi.mode(WIFI_AP);
+    #endif
     WiFi.softAP(ssid, password);
     WiFi.softAPConfig(local_ip, gateway, subnet);
-    delay(100);
+    delay(1000);
 
     IPAddress IP = WiFi.softAPIP();
     Serial.print("AP Address IP: ");
     Serial.println(IP);
 
     // Print ESP8266 Local IP Address
-    //Serial.println(WiFi.localIP());
+    Serial.println(WiFi.localIP());
+   
+#ifdef USE_ESP32
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+    {
+        Serial.println("GPIO7 Status: OFF | GPIO6 Status: OFF");
+        request->send(200, "/text.html",  SendHTML(0));
+    });
 
+    server.on("/All", HTTP_GET, [](AsyncWebServerRequest *request)
+    {
+        Serial.println("Toutes les Lucioles sweep");
+        request->send(200, "/text.html",  SendHTML(LUCIOLE_1 | LUCIOLE_2 | LUCIOLE_3));
+    });
+
+    server.on("/luc1", HTTP_GET, [](AsyncWebServerRequest *request)
+    {
+        Serial.println("Luciole 1 sweep");
+        request->send(200, "/text.html",  SendHTML(LUCIOLE_1));
+    });
+
+    server.on("/luc2", HTTP_GET, [](AsyncWebServerRequest *request)
+    {
+        Serial.println("Luciole 2 sweep");
+        request->send(200, "/text.html",  SendHTML(LUCIOLE_2));
+    });
+
+    server.on("/luc3", HTTP_GET, [](AsyncWebServerRequest *request)
+    {
+        Serial.println("Luciole 3 sweep");
+        request->send(200, "/text.html",  SendHTML(LUCIOLE_3));
+    });
+#else
     server.on("/",          HandleOnConnect);
     server.on("/All",       HandleAll);
     server.on("/luc1",      HandleLuciole_1);
     server.on("/luc2",      HandleLuciole_2);
     server.on("/luc3",      HandleLuciole_3);
     server.onNotFound(HandleNotFound);
+#endif
 
-    //server.on("/", HTTP_GET, sentvar); // Set to the server receives a request with /data/ in the string then run the sentvar function
     server.begin();
     Serial.println("Serveur HTTP Prêt");
   
@@ -82,10 +118,12 @@ void loop()
         //delay(delayval); // Delay for a period of time (in milliseconds).
     }
 
+    #ifndef USE_ESP32
     server.handleClient();
+    #endif
 }
 
-
+#ifndef USE_ESP32
 void HandleOnConnect()
 {
     Serial.println("GPIO7 Status: OFF | GPIO6 Status: OFF");
@@ -120,6 +158,7 @@ void HandleNotFound()
 {
     server.send(404, "text/plain", "404, Non Trouvé");
 }
+#endif
 
 String SendHTML(uint8_t Lucioles)
 {
