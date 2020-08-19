@@ -10,11 +10,18 @@ Alain Royer, 2020
 #define PIN            13           // Which pin on the ESP8266 is connected to the NeoPixels?
 #define NUMPIXELS      3            // How many NeoPixels are attached to the ESP8266?
 
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
-
 const char* ssid = "Lucioles Magiques";   
 const char* password = "Sonya";
+
+/* Put IP Address details */
+IPAddress local_ip(192,168,1,1);
+IPAddress gateway(192,168,1,1);
+IPAddress subnet(255,255,255,0);
+
 ESP8266WebServer server(80); // set to port 80 as server
+
+
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
 int delayval = 16; // delay for half a second
 
@@ -29,24 +36,38 @@ void sentvar()
         int readingInt = server.arg("sensor_reading").toInt();
         char readingToPrint[5];
         itoa(readingInt, readingToPrint, 10); //set the value to string conversion 
-    
-    //u8g2.firstPage();
-    //u8g2.drawUTF8(0, 64, readingToPrint);
-    //u8g2.nextPage();
         server.send(200, "text/html", "Value Received");
     }
 }
 
 void setup()
 {
+    Serial.begin(115200);
+    Serial.println();
     Serial.println("Lucioles Magiques");
     Serial.println("Initializing as server");
 
-    WiFi.softAP(ssid, password); //Start Soft AP
-    IPAddress myIP = WiFi.softAPIP();
+    WiFi.softAP(ssid, password);
+    WiFi.softAPConfig(local_ip, gateway, subnet);
+    delay(100);
 
-    server.on("/data/", HTTP_GET, sentvar); // Set to the server receives a request with /data/ in the string then run the sentvar function
+    IPAddress IP = WiFi.softAPIP();
+    Serial.print("AP IP address: ");
+    Serial.println(IP);
+
+    // Print ESP8266 Local IP Address
+    Serial.println(WiFi.localIP());
+
+    server.on("/",        handle_OnConnect);
+    server.on("/led1on",  handle_led1on);
+    server.on("/led1off", handle_led1off);
+    server.on("/led2on",  handle_led2on);
+    server.on("/led2off", handle_led2off);
+    server.onNotFound(handle_NotFound);
+
+    server.on("/", HTTP_GET, sentvar); // Set to the server receives a request with /data/ in the string then run the sentvar function
     server.begin();
+    Serial.println("HTTP server started");
   
     pixels.begin(); // This initializes the NeoPixel library.
 }
@@ -68,47 +89,77 @@ void loop()
 }
 
 
-
-/*  
-#include <ESP8266WiFi.h>
-#include <U8g2lib.h>
-
-
-const char *ssid = "yourssid"; //Server SSI
-const char *password = "yourpassword"; //Server Password
-
-ESP8266WebServer server(80); // set to port 80 as server
-
-void sentvar() {
-  if (server.hasArg("sensor_reading")) { // Value that sent from the client
-    int readingInt = server.arg("sensor_reading").toInt();
-    char readingToPrint[5];
-    itoa(readingInt, readingToPrint, 10); //set the value to string conversion 
-    u8g2.firstPage();
-    u8g2.drawUTF8(0, 64, readingToPrint);
-    u8g2.nextPage();
-    server.send(200, "text/html", "Value Received");
-  }
+void handle_OnConnect()
+{
+    //LED1status = LOW;
+    //LED2status = LOW;
+    Serial.println("GPIO7 Status: OFF | GPIO6 Status: OFF");
+    server.send(200, "text/html", SendHTML(false, false /*LED1status,LED2status*/)); 
 }
 
-void setup() {
-  Serial.println("14CORE | MCP9808 - P2P READING TEST")
-  delay(1000);
-  Serial.println("14CORE | Initializing as server")
-  delay(1000);
-
-  u8g2.begin();
-  u8g2.setFont(u8g2_font_logisoso62_tn);
-  u8g2.setFontMode(0);    //Set to enable transparent mode, which is faster
-
-  WiFi.softAP(ssid, password); //Start Soft AP
-  IPAddress myIP = WiFi.softAPIP();
-
-  server.on("/data/", HTTP_GET, sentvar); // Set to the server receives a request with /data/ in the string then run the sentvar function
-  server.begin();
+void handle_led1on()
+{
+    //LED1status = HIGH;
+    Serial.println("GPIO7 Status: ON");
+    server.send(200, "text/html", SendHTML(true, true/*LED2status*/)); 
 }
 
-void loop() {
-  server.handleClient();
-  }
- */
+void handle_led1off()
+{
+    //LED1status = LOW;
+    Serial.println("GPIO7 Status: OFF");
+    server.send(200, "text/html", SendHTML(false, true /*LED2status*/)); 
+}
+
+void handle_led2on()
+{
+    //LED2status = HIGH;
+    Serial.println("GPIO6 Status: ON");
+    server.send(200, "text/html", SendHTML(false/*LED1status*/, true)); 
+}
+
+void handle_led2off()
+{
+    //LED2status = LOW;
+    Serial.println("GPIO6 Status: OFF");
+    server.send(200, "text/html", SendHTML(true/*LED1status*/, false)); 
+}
+
+void handle_NotFound()
+{
+    server.send(404, "text/plain", "Not found");
+}
+
+String SendHTML(uint8_t led1stat,uint8_t led2stat)
+{
+    String ptr = "<!DOCTYPE html> <html>\n";
+    ptr +="<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n";
+    ptr +="<title>LED Control</title>\n";
+    ptr +="<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}\n";
+    ptr +="body{margin-top: 50px;} h1 {color: #444444;margin: 50px auto 30px;} h3 {color: #444444;margin-bottom: 50px;}\n";
+    ptr +=".button {display: block;width: 80px;background-color: #1abc9c;border: none;color: white;padding: 13px 30px;text-decoration: none;font-size: 25px;margin: 0px auto 35px;cursor: pointer;border-radius: 4px;}\n";
+    ptr +=".button-on {background-color: #1abc9c;}\n";
+    ptr +=".button-on:active {background-color: #16a085;}\n";
+    ptr +=".button-off {background-color: #34495e;}\n";
+    ptr +=".button-off:active {background-color: #2c3e50;}\n";
+    ptr +="p {font-size: 14px;color: #888;margin-bottom: 10px;}\n";
+    ptr +="</style>\n";
+    ptr +="</head>\n";
+    ptr +="<body>\n";
+    ptr +="<h1>Lucioles Magiques</h1>\n";
+    ptr +="<h3>Professeure Sylvain</h3>\n";
+  
+    if(led1stat)
+        {ptr +="<p>Lucioles 1-2-3: ON</p><a class=\"button button-off\" href=\"/led1off\">OFF</a>\n";}
+    else
+        {ptr +="<p>LED1 Status: OFF</p><a class=\"button button-on\" href=\"/led1on\">ON</a>\n";}
+
+    if(led2stat)
+        {ptr +="<p>LED2 Status: ON</p><a class=\"button button-off\" href=\"/led2off\">OFF</a>\n";}
+    else
+        {ptr +="<p>LED2 Status: OFF</p><a class=\"button button-on\" href=\"/led2on\">ON</a>\n";}
+
+    ptr +="</body>\n";
+    ptr +="</html>\n";
+    return ptr;
+}
