@@ -1,43 +1,139 @@
+
 /*
 Lucioles effect for trap in bottles (Harry Potters theme)
 Alain Royer, 2020
 */
 #define USE_ESP32
+//#define USE_WIFI
+
+// ****************************************************************************
+// Includes 
+
+#ifdef USE_WIFI
+ #ifdef USE_ESP32
+  #include <WiFi.h>
+  #include "ESPAsyncWebServer.h"
+ #else
+  #include <ESP8266WiFi.h>
+  #include <ESP8266WebServer.h>
+ #endif // USE_ESP32
+#endif // USE_WIFI
+
+//These define's must be placed at the beginning before #include "ESP x TimerInterrupt.h"
+//#define TIMER_INTERRUPT_DEBUG      1
 
 #ifdef USE_ESP32
-#include <WiFi.h>
-#include "ESPAsyncWebServer.h"
+ #include <ESP32TimerInterrupt.h>
+ //#include <ESP32_ISR_Timer-Impl.h>
+ //#include <ESP32_ISR_Timer.h>
 #else
-#include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
+#include <ESP8266TimerInterrupt.h>
+//#include <ESP8266_ISR_Timer-Impl.h>
+//#include <ESP8266_ISR_Timer.h>
 #endif
 
 #include <Adafruit_NeoPixel.h>
 
-#define PIN            13           // Which pin on the ESP8266 is connected to the NeoPixels?
-#define NUMPIXELS      3            // How many NeoPixels are attached to the ESP8266?
+// ****************************************************************************
+// Defines 
 
-#define LUCIOLE_1      1
-#define LUCIOLE_2      2
-#define LUCIOLE_3      4
-
-const char* ssid = "Lucioles Magiques";   
-const char* password = "Magic";
-
-// Put IP Address details
-IPAddress local_ip(192,168,1,1);
-IPAddress gateway(192,168,1,1);
-IPAddress subnet(255,255,255,0);
+#define PIN                     13           // Which pin on the ESP8266 is connected to the NeoPixels?
 
 #ifdef USE_ESP32
-AsyncWebServer server(80);          // Set to port 80 as server
-#else
-ESP8266WebServer server(80);        // Set to port 80 as server
+#define LED_BUILTIN             2            // Led on ESP32
 #endif
 
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+#define TIMER_INTERVAL_MS       1000
 
-int delayval = 16; // delay for half a second
+#define MAX_STEP                26
+#define MIN_RANDOM_INTENSITY    7
+#define MAX_RANDOM_INTENSITY    MAX_STEP
+#define MIN_RANDOM_TIMING       2000                 // 2 Seconds
+#define MAX_RANDOM_TIMING       6000                 // 6 Seconds
+
+#define DelayHasEnded(DELAY)  ((millis() > DELAY) ? true : false)
+
+// ****************************************************************************
+// Typedefs 
+
+typedef enum
+{
+    PIXEL_0,
+    PIXEL_1,
+    PIXEL_2,
+    PIXEL_3,
+    PIXEL_4,
+    PIXEL_5,
+    PIXEL_6,
+    PIXEL_7,
+    
+    NUMBER_OF_PIXEL,
+    FIRST_PIXEL = 0,
+} Pixel_t;
+
+// ****************************************************************************
+// Variables 
+
+#ifdef USE_WIFI
+ const char* ssid = "Lucioles Magiques";   
+ const char* password = "Magic";
+
+ // Put IP Address details
+ IPAddress local_ip(192,168,1,1);
+ IPAddress gateway(192,168,1,1);
+ IPAddress subnet(255,255,255,0);
+
+ #ifdef USE_ESP32
+  AsyncWebServer server(80);          // Set to port 80 as server
+ #else
+  ESP8266WebServer server(80);        // Set to port 80 as server
+ #endif // USE_ESP32
+
+#endif // USE_WIFI
+
+uint32_t TickCounter;
+
+ #ifdef USE_ESP32
+  ESP32Timer Timer(0);
+ #else
+  ESP8266Timer Timer(1);
+ #endif // USE_ESP32
+
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMBER_OF_PIXEL, PIN, NEO_GRB + NEO_KHZ800);
+
+const uint8_t PixPercent[MAX_STEP] =
+{
+    0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 100,   // Ascending 
+    64, 48, 32, 24, 16, 12, 8, 6, 4, 2, 1, 0};          // Descending
+
+bool IsIsTimeToUpdate = false;
+bool RequestAllPixel  = false;
+
+uint8_t  PixRed[NUMBER_OF_PIXEL];
+uint8_t  PixGreen[NUMBER_OF_PIXEL];
+uint8_t  PixBlue[NUMBER_OF_PIXEL];
+uint32_t PixTiming[NUMBER_OF_PIXEL];
+uint32_t PixStep[NUMBER_OF_PIXEL];
+
+// ****************************************************************************
+
+void IRAM_ATTR TimerHandler(void)
+{
+    TickCounter++;
+
+  #ifdef USE_ESP32
+    static bool Toggle = false;
+  
+    if((TickCounter % 600) == 0)
+    {
+        digitalWrite(LED_BUILTIN, Toggle);
+        Toggle = !Toggle;
+        RequestAllPixel = true;
+    }
+  #endif  
+}
+
+// ****************************************************************************
 
 void setup()
 {
@@ -46,9 +142,139 @@ void setup()
     Serial.println("Lucioles Magiques");
     Serial.println("Initialiser serveur");
 
-    #ifdef USE_ESP32
+  #ifdef USE_WIFI
+    SetupWifi();
+  #endif // USE_WIFI
+
+  #ifdef USE_ESP32
+    pinMode(LED_BUILTIN, OUTPUT);
+  #endif // USE_ESP32
+    
+    pixels.begin(); // This initializes the NeoPixel library.
+
+    // if analog input pin 0 is unconnected, random analog
+    // noise will cause the call to randomSeed() to generate
+    // different seed numbers each time the sketch runs.
+    // randomSeed() will then shuffle the random function.
+    randomSeed(analogRead(0));
+  
+    // Randomize all value for pixel
+    for(int Pixel = (int)FIRST_PIXEL; Pixel < (int)NUMBER_OF_PIXEL; Pixel++)
+    {
+        SetNextPixel(Pixel);
+    }
+
+    // Interval in microsecs
+    if(Timer.attachInterruptInterval(TIMER_INTERVAL_MS * 16, TimerHandler))
+    {
+        Serial.println("Starting  Timer OK, millis() = " + String(millis()));
+    }
+    else
+    {
+        Serial.println("Can't set Timer correctly. Select another freq. or interval");
+    }
+}
+
+// ****************************************************************************
+
+void loop()
+{
+    if(RequestAllPixel == true)
+    {
+        for(int Pixel = (int)FIRST_PIXEL; Pixel < (int)NUMBER_OF_PIXEL; Pixel++)
+        {
+            PixStep[Pixel] = 1;
+            IsIsTimeToUpdate = true;
+        }
+        
+        RequestAllPixel = false;
+    }
+    else
+    {
+        for(int Pixel = (int)FIRST_PIXEL; Pixel < (int)NUMBER_OF_PIXEL; Pixel++)
+        {
+            if(PixStep[Pixel] != 0)
+            {
+               PixStep[Pixel]++;
+    
+               if(PixStep[Pixel] == MAX_STEP)
+               {
+                  PixStep[Pixel] = 0;
+                  SetNextPixel(Pixel);
+               }
+               else
+               {
+                  IsIsTimeToUpdate = true;
+                  Serial.printf("%d - %d \r\n", Pixel, PixPercent[PixStep[Pixel]]);
+               }
+            }
+            else
+            {      
+                if(DelayHasEnded(PixTiming[Pixel]))
+                {
+                    PixStep[Pixel]++;
+                    IsIsTimeToUpdate = true;
+                   Serial.printf("%d - %d \r\n", Pixel, PixPercent[PixStep[Pixel]]);
+                }
+            }
+        }
+    }
+  
+    if(IsIsTimeToUpdate == true)
+    {
+        uint8_t Red;
+        uint8_t Green;
+        uint8_t Blue;
+
+        IsIsTimeToUpdate = false;
+        
+        // Update Pixel
+        for(int Pixel = (int)FIRST_PIXEL; Pixel < (int)NUMBER_OF_PIXEL; Pixel++)
+        {
+
+            Red   = (uint8_t)(((uint32_t)PixPercent[PixStep[Pixel]] * PixRed  [Pixel]) / 100);
+            Green = (uint8_t)(((uint32_t)PixPercent[PixStep[Pixel]] * PixGreen[Pixel]) / 100);
+            Blue  = (uint8_t)(((uint32_t)PixPercent[PixStep[Pixel]] * PixBlue [Pixel]) / 100);
+
+            // pixels.Color takes RGB values, from 0,0,0 up to 255,255,255
+            pixels.setPixelColor(Pixel, pixels.Color(Red, Green, Blue));
+            pixels.show(); // This sends the updated pixel color to the hardware.
+        }
+    }
+
+    delay(4);
+    //Serial.println("Timer millis() = " + String(millis()));
+    //Serial.printf("%ld", TickCounter);
+
+  #ifdef USE_WIFI
+   #ifndef USE_ESP32
+    server.handleClient();
+   #endif // USE_ESP32
+  #endif // USE_WIFI
+}
+
+// ****************************************************************************
+
+void SetNextPixel(int PixelID)
+{
+    // randomize all value for pixel driving
+    PixRed  [PixelID]  = random(MIN_RANDOM_INTENSITY, MAX_RANDOM_INTENSITY);
+    PixGreen[PixelID]  = random(MIN_RANDOM_INTENSITY, MAX_RANDOM_INTENSITY);
+    PixBlue [PixelID]  = random(MIN_RANDOM_INTENSITY, MAX_RANDOM_INTENSITY);
+    PixTiming[PixelID] = millis() + random(MIN_RANDOM_TIMING, MAX_RANDOM_TIMING);
+}
+
+// ****************************************************************************
+
+#ifdef USE_WIFI
+
+// ****************************************************************************
+
+void SetupWifi()
+{
+  #ifdef USE_ESP32
     WiFi.mode(WIFI_AP);
-    #endif
+  #endif // USE_ESP32
     WiFi.softAP(ssid, password);
     WiFi.softAPConfig(local_ip, gateway, subnet);
     delay(1000);
@@ -60,7 +286,7 @@ void setup()
     // Print ESP8266 Local IP Address
     Serial.println(WiFi.localIP());
    
-#ifdef USE_ESP32
+  #ifdef USE_ESP32
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
     {
         Serial.println("GPIO7 Status: OFF | GPIO6 Status: OFF");
@@ -90,40 +316,23 @@ void setup()
         Serial.println("Luciole 3 sweep");
         request->send(200, "/text.html",  SendHTML(LUCIOLE_3));
     });
-#else
+  #else // !USE_ESP32
     server.on("/",          HandleOnConnect);
     server.on("/All",       HandleAll);
     server.on("/luc1",      HandleLuciole_1);
     server.on("/luc2",      HandleLuciole_2);
     server.on("/luc3",      HandleLuciole_3);
     server.onNotFound(HandleNotFound);
-#endif
+  #endif // !USE_ESP32
 
     server.begin();
     Serial.println("Serveur HTTP Prêt");
-  
-    pixels.begin(); // This initializes the NeoPixel library.
 }
 
-void loop()
-{
-    // put your main code here, to run repeatedly:
-    for(int i = 0; i < NUMPIXELS; i++)
-    {
-        // pixels.Color takes RGB values, from 0,0,0 up to 255,255,255
-        pixels.setPixelColor(i, pixels.Color(0,150,0)); // Moderately bright green color.
-        pixels.show(); // This sends the updated pixel color to the hardware.
-        
-        // TODO remove this and use timing to enter here
-        //delay(delayval); // Delay for a period of time (in milliseconds).
-    }
-
-    #ifndef USE_ESP32
-    server.handleClient();
-    #endif
-}
+// ****************************************************************************
 
 #ifndef USE_ESP32
+
 void HandleOnConnect()
 {
     Serial.println("GPIO7 Status: OFF | GPIO6 Status: OFF");
@@ -158,7 +367,9 @@ void HandleNotFound()
 {
     server.send(404, "text/plain", "404, Non Trouvé");
 }
-#endif
+#endif // !USE_ESP32
+
+// ****************************************************************************
 
 String SendHTML(uint8_t Lucioles)
 {
@@ -331,3 +542,7 @@ String SendHTML(uint8_t Lucioles)
     ptr +="</html>\n";
     return ptr;
 }
+
+// ****************************************************************************
+
+#endif // USE_WIFI
