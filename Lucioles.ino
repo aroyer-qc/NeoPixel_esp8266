@@ -126,6 +126,22 @@ int      ButtonState      = RELEASED;
 bool     ButtonStateCount = 0;
 int      ButtonAction     = PRESSED;
 
+
+String CSS_Label = "\
+ RangeLabel {\
+  background-color: #3071a9;\
+  border: 0.2px solid #010101;\
+  border-radius: 4px;\
+  color: white;\
+  padding: 8px 16px;\
+  text-decoration: none;\
+  margin: 4px 2px;\
+  width: 50px;\
+}";
+
+// -webkit-text-decoration-line: overline;\
+//   text-decoration-line: overline;\ 
+
 String CSS_Button = "\
 input[type=button] {\
   background-color: #3071a9;\
@@ -138,6 +154,38 @@ input[type=button] {\
   cursor: pointer;\
 }";
 
+String CSS_Slider = "\
+.slidecontainer {\
+  width: 100%;\
+}\
+.slider {\
+  -webkit-appearance: none;\
+  width: 100%;\
+  height: 25px;\
+  background: #d3d3d3;\
+  outline: none;\
+  opacity: 0.7;\
+  -webkit-transition: .2s;\
+  transition: opacity .2s;\
+}\
+.slider:hover {\
+  opacity: 1;\
+}\
+.slider::-webkit-slider-thumb {\
+  -webkit-appearance: none;\
+  appearance: none;\
+  width: 25px;\
+  height: 25px;\
+  background: #4CAF50;\
+  cursor: pointer;\
+}\
+.slider::-moz-range-thumb {\
+  width: 25px;\
+  height: 25px;\
+  background: #4CAF50;\
+  cursor: pointer;\
+}\
+";
 
 String CSS_Range = "\
 input[type=range] {\
@@ -606,60 +654,12 @@ String SendHTML(uint8_t Mode)
     ptr += CSS_Range;
     ptr += CSS_Submit;
     ptr += CSS_Button;
+    ptr += CSS_Label;
 
-/*
-    
-    
-    ptr +=".slidecontainer { width: 100%; }";       // Width of the outside container
-    
-    
-    // The slider itself
-    ptr +=".slider {";
-    ptr +="-webkit-appearance: none;";              // Override default CSS styles
-    ptr +="width: 100%;";                           // Full-width
-    ptr +="height: 15px;";                          // Specified height
-    ptr +="background: #d3d3d3;";                   // Grey background
-    ptr +="outline: none;";                         // Remove outline
-    ptr +="opacity: 0.7;";                          // Set transparency (for mouse-over effects on hover)
-    ptr +="-webkit-transition: .2s;";               // 0.2 seconds transition on hover
-    ptr +="transition: opacity .2s;";
-    ptr +="}";
 
-    // Mouse-over effects
-    ptr +=".slider:hover { opacity: 1; }";          // Fully shown on mouse-over
+    ptr += "function updateTextInput(val) { document.getElementById('textInput').value=val; }";
 
-    // The slider handle (use -webkit- (Chrome, Opera, Safari, Edge) and -moz- (Firefox) to override default look)
-    ptr +=".slider::-webkit-slider-thumb {";
-    ptr +="-webkit-appearance: none;";              // Override default look
-    ptr +="appearance: none;";
-    ptr +="width: 25px;";                           // Set a specific slider handle width
-    ptr +="height: 25px;";                          // Slider handle height
-    ptr +="background: #4CAF50;";                   // Green background
-    ptr +="border-radius: 50%;";
-    ptr +="box-shadow: 0 0 10px -2px;";
-    ptr +="cursor: pointer;";                       // Cursor on hover
-    ptr +="}";
 
-    ptr +=".slider::-moz-range-thumb {";
-    ptr +="width: 25px;";                           // Set a specific slider handle width
-    ptr +="height: 25px;";                          // Slider handle height
-    ptr +="border-radius: 50%;";
-    ptr +="box-shadow: 0 0 10px -2px;";
-    ptr +="background: #4CAF50;";                   // Green background
-    ptr +="cursor: pointer;";                       // Cursor on hover
-    ptr +="}";
-  */  
-
-/*
-    // Button
-    ptr +="body{margin-top: 50px;} h1 {color: #444444;margin: 50px auto 30px;} h3 {color: #444444;margin-bottom: 50px;}\n";
-    ptr +=".button {display: block;width: 80px;background-color: #1abc9c;border: none;color: white;padding: 13px 30px;text-decoration: none;font-size: 25px;margin: 0px auto 35px;cursor: pointer;border-radius: 4px;}\n";
-    ptr +=".button-on {background-color: #1abc9c;}\n";
-    ptr +=".button-on:active {background-color: #16a085;}\n";
-    ptr +=".button-off {background-color: #34495e;}\n";
-    ptr +=".button-off:active {background-color: #2c3e50;}\n";
-    ptr +="p {font-size: 14px;color: #888;margin-bottom: 10px;}\n";
-*/
     ptr +="</style>\n";
     ptr +="</head>\n";
     ptr +="<body>\n";
@@ -673,120 +673,106 @@ String SendHTML(uint8_t Mode)
     ptr +="<h3>Copyright (c) Guest who! 2020</h3>\n";
 //    ptr +="<h3>Copyright (c) Alain Royer 2020</h3>\n";
 
-    ptr +="<p>Apparition min al&eacute;atoire (5-300).</p>";
+//#define MIN_RANDOM_INTENSITY    7
+//#define MAX_RANDOM_INTENSITY    MAX_STEP
+//#define MIN_RANDOM_TIMING       5000                 // 5 Seconds
+//#define MAX_RANDOM_TIMING       20000                // 20 Seconds
+
+   // VarValue = String(MaxRandomPixelTiming / 1000, DEC);
+   // ptr += VarValue;
+//<input type="range" name="rangeInput" min="0" max="100" onchange="updateTextInput(this.value);">
+//<input type="text" id="textInput" value="">
+
+    //**************************************************************
+    // Min apparition timing value
+    ptr +="<p>Apparition min al&eacute;atoire</p>";
     ptr +="<form action=\"/get?Min=\">";
-    //ptr +="<label for=\"vol\">(between 5 and 300):</label>";
-    ptr +="<input type=\"range\" id=\"myMin\" name=\"Min\" min=\"0\" max=\"50\">";
-    ptr +="<input type=\"submit\">";
-    ptr +="</form>";
-    
-    ptr +="<p>Apparition max al&eacute;atoire  (5-300).</p>";
-    ptr +="<form action=\"/get?Max=\">";
-    //ptr +="<label for=\"vol\">(between 5 and 300):</label>";
-    ptr +="<input type=\"range\" id=\"myMax\" name=\"Max\" min=\"0\" max=\"50\">";
-    ptr +="<input type=\"submit\">";
-    ptr +="</form>";
-
-    ptr +="<p>Intensit&eacute; min al&eacute;atoire (7-13).</p>";
-    ptr +="<form action=\"/get?IntMin=\">";
-    //ptr +="<label for=\"vol\">(between 5 and 300):</label>";
-    ptr +="<input type=\"range\" id=\"myIntMin\" name=\"IntMin\" min=\"0\" max=\"50\">";
-    ptr +="<input type=\"submit\">";
-    ptr +="</form>";
-
-    ptr +="<p>Intensit&eacute; max al&eacute;atoire (7-13).</p>";
-    ptr +="<form action=\"/get?IntMax=\">";
-    //ptr +="<label for=\"vol\">(between 5 and 300):</label>";
-    ptr +="<input type=\"range\" id=\"myIntMax\" name=\"IntMax\" min=\"0\" max=\"50\">";
-    ptr +="<input type=\"submit\">";
-    ptr +="</form>";
-
-    /*
-    ptr +="<div class=\"slidecontainer\">";
-    ptr +="<input type=\"range\" min=\"5\" max=\"300\" value=\"";
+    ptr +="<input type=\"range\" id=\"myMin\" name=\"Min\" class=\"slider\" min=\"";
     VarValue = String(MinRandomPixelTiming / 1000, DEC);
     ptr += VarValue;
-    ptr +="\" class=\"slider\" id=\"myMin\">";
-    ptr +="<p>Value: <span id=\"Min\"></span></p>";
-    ptr +="</div>";
-
-
-    ptr +="<p>Apparition max al&eacute;atoire.</p>";
-    ptr +="<div class=\"slidecontainer\">";
-    ptr +="<input type=\"range\" min=\"5\" max=\"300\" value=\"";
+    ptr +="\" max=\"";
     VarValue = String(MaxRandomPixelTiming / 1000, DEC);
     ptr += VarValue;
-    ptr +="\" class=\"slider\" id=\"myMax\">";
-    ptr +="<p>Value: <span id=\"Max\"></span></p>";
-    ptr +="</div>";
-
-    ptr +="<p>Intensit&eacute; min al&eacute;atoire.</p>";
-    ptr +="<div class=\"slidecontainer\">";
-    ptr +="<input type=\"range\" min=\"7\" max=\"13\" value=\"";
-    VarValue = String(MinRandomPixelIntensity, DEC);
+    ptr +="\" value=\"";
+    VarValue = String(MinRandomPixelTiming / 1000, DEC);
     ptr += VarValue;
-    ptr +="\" class=\"slider\" id=\"myIntMin\">";
-    ptr +="<p>Value: <span id=\"IntMin\"></span></p>";
-    ptr +="</div>";
-
-    ptr +="<p>Intensit&eacute; max al&eacute;atoire.</p>";
-    ptr +="<div class=\"slidecontainer\">";
-    ptr +="<input type=\"range\" min=\"7\" max=\"13\" value=\"";
-    VarValue = String(MaxRandomPixelIntensity, DEC);
-    ptr += VarValue;
-    ptr +="\" class=\"slider\" id=\"myIntMax\">";
-    ptr +="<p>Value: <span id=\"IntMax\"></span></p>";
-    ptr +="</div>";
-
-    ptr +="<script>";
-    ptr +="var MinHttpReq = XMLHttpRequest();";
-    ptr +="var MinSlider = document.getElementById(\"myMin\");";
-    ptr +="var MinOutput = document.getElementById(\"Min\");";
-    ptr +="MinOutput.innerHTML = MinSlider.value;";
-    ptr +="MinSlider.oninput = function() {";
-
-    ptr +="MinOutput.innerHTML = this.value;";
+    ptr +="\" onchange=\"updateTextInput(this.value);\">";
+    ptr +="<div class=\"RangeLabel\" id=\"textInput\" value=\"";
+  //VarValue = String(MinRandomPixelTiming / 1000, DEC);
+  //ptr += VarValue;
+    ptr +="\"></div>";
+    ptr +="<input type=\"submit\">";
+    ptr +="</form>";
     
-    ptr +="MinHttpReq.open(\"GET\", \"get?Min=123\", true)";
-    ptr +="MinHttpReq.send(null)";
-        
-    ptr +="}";
-    ptr +="</script>";
+    //**************************************************************
+    // Max apparition timing value
+    ptr +="<p>Apparition max al&eacute;atoire</p>";//  (5-300).</p>";
+    ptr +="<form action=\"/get?Max=\">";
+    ptr +="<input type=\"range\" id=\"myMax\" name=\"Max\" class=\"slider\" min=\"";
+    VarValue = String(MinRandomPixelTiming / 1000, DEC);
+    ptr += VarValue;
+    ptr +="\" max=\"";
+    VarValue = String(MaxRandomPixelTiming / 1000, DEC);
+    ptr += VarValue;
+    ptr +="\" value=\"";
+    VarValue = String(MaxRandomPixelTiming / 1000, DEC);
+    ptr += VarValue;
+    ptr +="\" onchange=\"updateTextInput(this.value);\">";
+    ptr +="<div class=\"RangeLabel\" id=\"textInput\" value=\"";
+    //VarValue = String(MaxRandomPixelTiming / 1000, DEC);
+    //ptr += VarValue;
+    ptr +="\"></div>";
+    ptr +="<input type=\"submit\">";
+    ptr +="</form>";
 
-    ptr +="<script>";
-    ptr +="var MaxSlider = document.getElementById(\"myMax\");";
-    ptr +="var MaxOutput = document.getElementById(\"Max\");";
-    ptr +="MaxOutput.innerHTML = MaxSlider.value;";
-    ptr +="MaxSlider.oninput = function() {";
-    ptr +="MaxOutput.innerHTML = this.value;";
-    ptr +="}";
-    ptr +="</script>";
+    //**************************************************************
+    // Min apparition timing value
+    ptr +="<p>Apparition min al&eacute;atoire</p>";
+    ptr +="<form action=\"/get?IntMin=\">";
+    ptr +="<input type=\"range\" id=\"myIntMin\" name=\"IntMin\" class=\"slider\" min=\"";
+    VarValue = String(MinRandomPixelIntensity / 1000, DEC);
+    ptr += VarValue;
+    ptr +="\" max=\"";
+    VarValue = String(MaxRandomPixelIntensity / 1000, DEC);
+    ptr += VarValue;
+    ptr +="\" value=\"";
+    VarValue = String(MinRandomPixelIntensity / 1000, DEC);
+    ptr += VarValue;
+    ptr +="\" onchange=\"updateTextInput(this.value);\">";
+    ptr +="<div class=\"RangeLabel\" id=\"textInput\" value=\"";
+  //VarValue = String(MinRandomPixelIntensity / 1000, DEC);
+  //ptr += VarValue;
+    ptr +="\"></div>";
+    ptr +="<input type=\"submit\">";
+    ptr +="</form>";
+    
+    //**************************************************************
+    // Max apparition timing value
+    ptr +="<p>Apparition max al&eacute;atoire</p>";//  (5-300).</p>";
+    ptr +="<form action=\"/get?IntMax=\">";
+    ptr +="<input type=\"range\" id=\"myIntMax\" name=\"IntMax\" class=\"slider\" min=\"";
+    VarValue = String(MinRandomPixelIntensity / 1000, DEC);
+    ptr += VarValue;
+    ptr +="\" max=\"";
+    VarValue = String(MaxRandomPixelIntensity / 1000, DEC);
+    ptr += VarValue;
+    ptr +="\" value=\"";
+    VarValue = String(MaxRandomPixelIntensity / 1000, DEC);
+    ptr += VarValue;
+    ptr +="\" onchange=\"updateTextInput(this.value);\">";
+    ptr +="<div class=\"RangeLabel\" id=\"textInput\" value=\"";
+    //VarValue = String(MaxRandomPixelIntensity / 1000, DEC);
+    //ptr += VarValue;
+    ptr +="\"></div>";
+    ptr +="<input type=\"submit\">";
+    ptr +="</form>";
 
-    ptr +="<script>";
-    ptr +="var IntMinSlider = document.getElementById(\"myIntMin\");";
-    ptr +="var IntMinOutput = document.getElementById(\"IntMin\");";
-    ptr +="IntMinOutput.innerHTML = IntMinSlider.value;";
-    ptr +="IntMinSlider.oninput = function() {";
-    ptr +="IntMinOutput.innerHTML = this.value;";
-    ptr +="}";
-    ptr +="</script>";
-
-    ptr +="<script>";
-    ptr +="var IntMaxSlider = document.getElementById(\"myIntMax\");";
-    ptr +="var IntMaxOutput = document.getElementById(\"IntMax\");";
-    ptr +="IntMaxOutput.innerHTML = IntMaxSlider.value;";
-    ptr +="IntMaxSlider.oninput = function() {";
-    ptr +="IntMaxOutput.innerHTML = this.value;";
-    ptr +="}";
-    ptr +="</script>";
-*/
     if(Mode == 0)
     { 
     }
     
 
-
-ptr +="<form action=\"/Party\">";
+    ptr +="<form action=\"/Party\">";
     //ptr +="<label for=\"vol\">(between 5 and 300):</label>";
     ptr +="<input type=\"button\" value=\"Button\">";
     ptr +="<input type=\"button\" value=\"Button\"";
