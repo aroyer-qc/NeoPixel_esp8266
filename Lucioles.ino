@@ -44,12 +44,13 @@ Alain Royer, 2020
 #endif
 
 #define TIMER_INTERVAL_MS       1000
-
 #define MAX_STEP                26
-#define MIN_RANDOM_INTENSITY    7
-#define MAX_RANDOM_INTENSITY    MAX_STEP
-#define MIN_RANDOM_TIMING       2000                 // 2 Seconds
-#define MAX_RANDOM_TIMING       6000                 // 6 Seconds
+#define NUMBER_OF_COLOR         13
+#define MIN_RANDOM_TIMING       4000                 // 1000 = 1 sec
+#define MAX_RANDOM_TIMING       20000
+
+#define MIN_RANDOM_TIMING_CRAZY 100                 // 1000 = 1 sec
+#define MAX_RANDOM_TIMING_CRAZY 500
 
 #define DelayHasEnded(DELAY)  ((millis() > DELAY) ? true : false)
 
@@ -70,6 +71,13 @@ typedef enum
     NUMBER_OF_PIXEL,
     FIRST_PIXEL = 0,
 } Pixel_t;
+
+typedef struct
+{
+  uint8_t Red;
+  uint8_t Green;
+  uint8_t Blue;
+} Color_t;
 
 // ****************************************************************************
 // Variables 
@@ -104,10 +112,30 @@ Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMBER_OF_PIXEL, PIN, NEO_GRB + NEO
 const uint8_t PixPercent[MAX_STEP] =
 {
     0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 100,   // Ascending 
-    64, 48, 32, 24, 16, 12, 8, 6, 4, 2, 1, 0};          // Descending
+    64, 48, 32, 24, 16, 12, 8, 6, 4, 2, 1, 0            // Descending
+};
+
+const Color_t Color[13]
+{
+  {255, 0,   0  },    // Red
+  {0,   255, 0  },    // Lime
+  {0,   0,   255},    // Blue
+  {255, 255, 0  },    // Yellow
+  {0,   255, 255},    // Cyan
+  {255, 0,   255},    // Magenta
+  {255, 255 ,255},    // White  
+  {128, 0,   0  },    // Dark Yellow  
+  {128, 128, 0  },    // Olive
+  {0,   128, 0  },    // Green
+  {0,   128, 128},    // Teal
+  {0,   0,   128},    // Navy
+  {128, 128 ,128},    // White  
+};
+
 
 bool IsIsTimeToUpdate = false;
 bool RequestAllPixel  = false;
+uint32_t GoCrazy  = 0;
 
 uint8_t  PixRed[NUMBER_OF_PIXEL];
 uint8_t  PixGreen[NUMBER_OF_PIXEL];
@@ -124,11 +152,12 @@ void IRAM_ATTR TimerHandler(void)
   #ifdef USE_ESP32
     static bool Toggle = false;
   
-    if((TickCounter % 600) == 0)
+    if((TickCounter % 2000) == 0)
     {
         digitalWrite(LED_BUILTIN, Toggle);
         Toggle = !Toggle;
-        RequestAllPixel = true;
+        // RequestAllPixel = true;
+        GoCrazy = 2000;
     }
   #endif  
 }
@@ -205,7 +234,7 @@ void loop()
                else
                {
                   IsIsTimeToUpdate = true;
-                  Serial.printf("%d - %d \r\n", Pixel, PixPercent[PixStep[Pixel]]);
+               //   Serial.printf("%d - %d \r\n", Pixel, PixPercent[PixStep[Pixel]]);
                }
             }
             else
@@ -214,12 +243,21 @@ void loop()
                 {
                     PixStep[Pixel]++;
                     IsIsTimeToUpdate = true;
-                   Serial.printf("%d - %d \r\n", Pixel, PixPercent[PixStep[Pixel]]);
+                 //  Serial.printf("%d - %d \r\n", Pixel, PixPercent[PixStep[Pixel]]);
                 }
             }
         }
     }
-  
+  /*
+   IsIsTimeToUpdate = true;
+   PixStep[0]++;
+   if(PixStep[0] >= MAX_STEP)
+   {
+      SetNextPixel(0);
+     PixStep[0] = 0;
+   }
+   //delay(840);
+  */
     if(IsIsTimeToUpdate == true)
     {
         uint8_t Red;
@@ -238,11 +276,29 @@ void loop()
 
             // pixels.Color takes RGB values, from 0,0,0 up to 255,255,255
             pixels.setPixelColor(Pixel, pixels.Color(Red, Green, Blue));
-            pixels.show(); // This sends the updated pixel color to the hardware.
         }
+ 
+        pixels.show(); // This sends the updated pixel color to the hardware.
     }
 
-    delay(4);
+    delay(8);
+    if(GoCrazy != 0)
+    {
+        if(GoCrazy == 200)
+        {
+            Serial.println("Go Crazy");
+            for(int Pixel = (int)FIRST_PIXEL; Pixel < (int)NUMBER_OF_PIXEL; Pixel++)
+            {
+                if(PixStep[Pixel] == 0)
+                {
+                    SetNextPixel(Pixel);
+                }
+            }
+        }
+        GoCrazy--;
+        if(GoCrazy == 0)Serial.println("Go Normal");
+    }
+    
     //Serial.println("Timer millis() = " + String(millis()));
     //Serial.printf("%ld", TickCounter);
 
@@ -257,11 +313,22 @@ void loop()
 
 void SetNextPixel(int PixelID)
 {
+    uint8_t NewColor;
+  
     // randomize all value for pixel driving
-    PixRed  [PixelID]  = random(MIN_RANDOM_INTENSITY, MAX_RANDOM_INTENSITY);
-    PixGreen[PixelID]  = random(MIN_RANDOM_INTENSITY, MAX_RANDOM_INTENSITY);
-    PixBlue [PixelID]  = random(MIN_RANDOM_INTENSITY, MAX_RANDOM_INTENSITY);
-    PixTiming[PixelID] = millis() + random(MIN_RANDOM_TIMING, MAX_RANDOM_TIMING);
+    NewColor = random(NUMBER_OF_COLOR);
+    PixRed  [PixelID]  = Color[NewColor].Red;
+    PixGreen[PixelID]  = Color[NewColor].Green;
+    PixBlue [PixelID]  = Color[NewColor].Blue;
+    
+    if(GoCrazy != 0)
+    {
+        PixTiming[PixelID] = millis() + random(MIN_RANDOM_TIMING_CRAZY, MAX_RANDOM_TIMING_CRAZY);
+    }
+    else
+    {
+        PixTiming[PixelID] = millis() + random(MIN_RANDOM_TIMING, MAX_RANDOM_TIMING);
+    }
 }
 
 // ****************************************************************************
